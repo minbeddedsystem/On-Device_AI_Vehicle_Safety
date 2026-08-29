@@ -1,6 +1,6 @@
 # 😴 System1 — 운전자 졸음 모니터링 (Multi-task Drowsiness Detection)
 
-운전자의 **눈 감김(Eye)**, **하품(Yawn)**, **고개 자세(Head Pose)**를 하나의 Multi-task 모델로 동시에 추론하고, 단일 Frame이 아닌 시간에 따른 상태 변화를 누적하여 졸음 위험도(Risk Score)를 실시간으로 판단하는 시스템입니다. ResNet18 / MobileNetV2 / MobileViT-XXS 3종 Backbone을 직접 학습·비교하고, Jetson Orin Nano 실측 성능과 Grad-CAM 분석까지 거쳐 최종 모델을 선정하였습니다.
+운전자의 눈 감김(Eye), 하품(Yawn), 고개 자세(Head Pose)를 하나의 Multi-task 모델로 동시에 추론하고, 단일 Frame이 아닌 시간에 따른 상태 변화를 누적하여 졸음 위험도(Risk Score)를 실시간으로 판단하는 시스템입니다. ResNet18 / MobileNetV2 / MobileViT-XXS 3종 Backbone을 직접 학습·비교하고, Jetson Orin Nano 실측 성능과 Grad-CAM 분석까지 거쳐 최종 모델을 선정하였습니다.
 
 > 온디바이스 시스템반도체설계 2기 팀 프로젝트 — System1 담당: 최민영 (2026.08.05 ~ 2026.08.19)
 
@@ -25,6 +25,8 @@
 - **3종 Backbone 정량 비교 + Grad-CAM 정성 분석**: 수치 비교만으로 설명하기 어려운 정확도 차이를 Grad-CAM 시각화로 보완 검증
 
 ## 🏗️ Architecture
+
+![System1 Flow](images/system1_flow.png)
 
 ### Multi-task 모델 구조
 
