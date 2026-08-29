@@ -1,6 +1,6 @@
 # 🔒 Security System — 차량 보안카메라 (Face Authentication & Anti-Spoofing)
 
-차량 내부의 얼굴을 분석하여 **등록된 소유자(OWNER)**, **등록된 허용 사용자(GUEST)**, **미등록 사용자(UNKNOWN)**, **위조 얼굴(SPOOF)**을 구분하는 보안 카메라 시스템입니다. 얼굴 검출 → Anti-Spoofing 판별 → 얼굴 인식의 3-Stage Pipeline으로 구성하고, UNKNOWN/SPOOF 지속시간 기반 보안 정책으로 단순 얼굴 인식을 넘어선 이상 접근 판단까지 수행합니다.
+차량 내부의 얼굴을 분석하여 등록된 소유자(OWNER), 등록된 허용 사용자(GUEST), 미등록 사용자(UNKNOWN), 위조 얼굴(SPOOF)을 구분하는 보안 카메라 시스템입니다. 얼굴 검출 → Anti-Spoofing 판별 → 얼굴 인식의 3-Stage Pipeline으로 구성하고, UNKNOWN/SPOOF 지속시간 기반 보안 정책으로 단순 얼굴 인식을 넘어선 이상 접근 판단까지 수행합니다.
 
 > 온디바이스 시스템반도체설계 2기 팀 프로젝트 — Security System 담당: 이나경 (2026.08.05 ~ 2026.08.19)
 
