@@ -63,7 +63,7 @@ NVIDIA **Jetson Orin Nano** 위에서 3대의 Webcam 입력을 실시간으로 �
 |---|---|
 | 최민영 | System1(졸음 감지) 개발 및 성능 분석 중심. Eye/Yawn/Head Pose 데이터셋 구축, ResNet18·MobileNetV2·MobileViT-XXS 학습 및 성능(정확도·모델크기·Jetson Latency) 비교, Grad-CAM 기반 판단 근거 분석, YOLO11n/s/m 전력 소비(Energy/Frame) 측정 및 분석, System1 최종보고서·발표자료 작성, 최종 발표 진행 |
 | 이나경 | 각 시스템 초기 구현 및 Security System 중심 개발. System1 3종 모델 데이터셋 학습, System1 시연영상 제작, System2 MiVOLO GPU 실행 구조 구축 및 YOLO11n/s/m+MiVOLO Pipeline E2E Latency·FPS 분석, Security System 구현 및 시연영상 제작, System1·Security 보고서/발표자료 작성 |
-| 이찬미 (팀장) | System2(잔류 탑승자 감지) 개발 및 성능 분석 중심. YOLO11n/s/m 정확도 평가 환경 구축, Precision·Recall·F1-score·mAP50·mAP50-95 및 Young/Animal Recall 분석, System2 최종 모델 선정 및 YOLO11n Fine-tuning, System2 시연영상 제작, System2 보고서/발표자료 작성 |
+| 이찬미 | System2(잔류 탑승자 감지) 개발 및 성능 분석 중심. YOLO11n/s/m 정확도 평가 환경 구축, Precision·Recall·F1-score·mAP50·mAP50-95 및 Young/Animal Recall 분석, System2 최종 모델 선정 및 YOLO11n Fine-tuning, System2 시연영상 제작, System2 보고서/발표자료 작성 |
 | 팀 전체 | 프로젝트 주제·구현 범위 결정, 시스템 아키텍처·데이터 흐름 설계, 모델 종합 평가 및 최종 모델 선정, 시스템별 결과 검증, 전체 시연/발표자료/보고서 최종 검토 |
 
 ## 🗓️ 진행 일지
