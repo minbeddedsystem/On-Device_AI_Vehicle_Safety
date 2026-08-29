@@ -1,95 +1,106 @@
-# 🚗 On-Device AI 기반 차량 내 잔류 탑승자 위험 감지 및 능동 안전 시스템
+# 🔒 Security System — 차량 보안카메라 (Face Authentication & Anti-Spoofing)
 
-NVIDIA **Jetson Orin Nano** 위에서 3대의 Webcam 입력을 실시간으로 처리하여, 운전자 졸음, 차량 내 잔류 아동/반려동물, 차량 주변 비인가 접근을 하나의 On-Device AI 파이프라인으로 감지하는 팀 프로젝트입니다. 모든 추론과 위험 판단은 외부 서버 없이 Jetson 내부에서 수행하며, 최종 상태와 이벤트 정보만 Web UI/Telegram으로 전달합니다.
+차량 내부의 얼굴을 분석하여 **등록된 소유자(OWNER)**, **등록된 허용 사용자(GUEST)**, **미등록 사용자(UNKNOWN)**, **위조 얼굴(SPOOF)**을 구분하는 보안 카메라 시스템입니다. 얼굴 검출 → Anti-Spoofing 판별 → 얼굴 인식의 3-Stage Pipeline으로 구성하고, UNKNOWN/SPOOF 지속시간 기반 보안 정책으로 단순 얼굴 인식을 넘어선 이상 접근 판단까지 수행합니다.
 
-> 온디바이스 시스템반도체설계 2기 팀 프로젝트 (2026.08.05 ~ 2026.08.19, 팀원: 이나경, 이찬미, 최민영)
+> 온디바이스 시스템반도체설계 2기 팀 프로젝트 — Security System 담당: 이나경 (2026.08.05 ~ 2026.08.19)
 
 ## 📌 Overview
 
 | 항목 | 내용 |
 |---|---|
-| 핵심 플랫폼 | **NVIDIA Jetson Orin Nano Developer Kit** (Ampere GPU, 최대 67 INT8 TOPS) |
-| 입력 | USB Webcam × 3 (운전자 / 뒷좌석 / 차량 주변) |
-| OS / SDK | JetPack 6.2.2 (Jetson Linux), CUDA 12.6 |
-| AI Framework | PyTorch, TensorRT FP16, TorchScript |
-| 모델 학습 환경 | Google Colab (Tesla T4 GPU) |
-| 결과 전달 | Web UI (FastAPI / Flask), Telegram Bot Alert |
-| 서브시스템 | **System1 졸음 감지 · System2 잔류 탑승자 감지 · Security System 보안카메라** |
+| 처리 흐름 | Webcam → YuNet(얼굴 검출) → MiniFASNetV2(Anti-Spoofing) → SFace(얼굴 인식) → 상태 판정 → Capture/Web Alarm |
+| 분류 결과 | OWNER / GUEST / UNKNOWN / SPOOF |
+| 실행 파일 | `security_exe.py` (Webcam/저장영상 공용, Web UI 서버 자동 실행) |
+| 사용자 DB | SQLite (`face_database.sqlite3`), 사용자당 얼굴 임베딩 15개 수집 |
+| Web UI | Flask 기반, 실행 시 자동 시작 (기본 포트 5000) |
 
-## ✨ 프로젝트 목표
+## ✨ Features
 
-기존의 단순 인원 감지 방식에서 확장하여 운전자 상태, 차량 내 잔류 탑승자, 차량 주변 접근 상황을 각각 분석하고, 위험 상황 발생 시 사용자에게 경고를 제공하는 통합 시스템을 목표로 하였습니다. 모델 선정 시에도 정확도만 우선하지 않고, Jetson 환경에서의 실시간 추론 가능성, 모델 경량성, 전력 효율을 함께 평가 기준으로 삼았습니다.
+- **3-Stage Pipeline**: YuNet(얼굴 검출 + Landmark) → MiniFASNetV2(Anti-Spoofing, LIVE/SPOOF 판별) → SFace(얼굴 Embedding 기반 등록자 비교) 순서로 실제 얼굴만 인증 단계까지 전달
+- **경량 Anti-Spoofing 우선 적용**: 사진·스마트폰 화면 등 위조 입력을 사용자 인증보다 먼저 걸러내어, LIVE로 판정된 얼굴만 SFace 비교 수행 (MiniFASNetV2, 약 0.435M Parameters·0.081GFLOPs)
+- **지속시간 기반 보안 정책**: UNKNOWN/SPOOF를 단일 Frame에서 즉시 경고하지 않고, Capture Timer(이벤트 저장)와 Presence Timer(전체 체류시간)를 분리 운영하여 순간적 오검출과 실제 장시간 비인가 접근을 구분
+- **Web UI/Mobile 연동**: Jetson과 동일 네트워크의 스마트폰·PC 브라우저에서 실시간 보안 상태, UNKNOWN 지속시간, Capture/Alarm 이벤트, 이벤트 이미지를 확인 가능
+- **보안 이벤트 자동 저장**: UNKNOWN/SPOOF 이벤트 발생 시 전체 Frame, 얼굴 Crop, 발생 시각·지속시간·이벤트 유형을 `security_events/`에 이미지 + `event.json`으로 기록
+- **웹캠 기반 사용자 등록**: `register_person.py`로 OWNER/GUEST를 직접 등록, 등록 시에도 Anti-Spoofing을 거쳐 LIVE로 판정된 얼굴만 등록 데이터로 사용, 중복 등록 방지
 
-## 🏗️ 전체 시스템 구조
+## 🏗️ Architecture
+
+![Security System Flow](images/security_flow.png)
+
+### 처리 흐름
 
 ```
-                     ┌────────────────────────────┐
-   Webcam(운전자) --> │                            │
-                     │                            │
-   Webcam(뒷좌석) --> │   Jetson Orin Nano         │ --> Web UI (FastAPI/Flask)
-                     │   (On-Device AI Inference) │
-   Webcam(차량주변) --> │                            │ --> Telegram Bot Alert
-                     └────────────────────────────┘
+Webcam 입력
+    ↓
+YuNet — 얼굴 검출 (Bounding Box + Landmark)
+    ↓
+MiniFASNetV2 — Anti-Spoofing (LIVE / SPOOF, Threshold 0.60, 3초 연속 시 SPOOF 확정)
+    ↓ (LIVE만 통과)
+SFace — 얼굴 Embedding 추출 → 등록 DB 비교
+    ↓
+OWNER / GUEST / UNKNOWN 판정
+    ↓
+지속시간 기반 Security Policy → Capture / Web Alarm
 ```
 
-| 서브시스템 | 감지 대상 | 적용 모델 | 최종 출력 |
-|---|---|---|---|
-| **System1** (졸음 감지) | 눈 감김 · 하품 · 고개 자세 | MobileViT-XXS 기반 Multi-task | NORMAL / WARNING / DANGER |
-| **System2** (잔류 탑승자 감지) | 7세 이하 아동 · 반려동물 잔류 | Fine-tuned YOLO11n + MiVOLO V2 | CHILD / ADULT / ANIMAL, Stage 0~3 |
-| **Security System** (보안카메라) | 등록/미등록 사용자, 위조 얼굴 | YuNet + MiniFASNetV2 + SFace | OWNER / GUEST / UNKNOWN / SPOOF |
+### 기본 보안 정책
 
-각 서브시스템의 상세 구조, 실행 방법, 성능 비교 결과는 폴더별 README를 참고하세요.
+| 조건 | 시스템 동작 |
+|---|---|
+| UNKNOWN 10초 지속 | 전체 Frame 및 얼굴 Crop 저장(Capture) |
+| Capture Cycle 20초 경과 | Capture Cycle Timer만 초기화 (Presence Timer는 유지) |
+| UNKNOWN 30초 연속 지속 | Web Alarm 발생 |
+| SPOOF 3초 연속 지속 | Capture + Web Alarm 즉시 발생 |
+| OWNER/GUEST 등장 또는 UNKNOWN 소멸 | 관련 Timer 초기화 |
 
-- [`system1/`](./system1) — 운전자 졸음 모니터링 (Multi-task Eye · Yawn · Head Pose)
-- [`system2/`](./system2) — 잔류 아동/반려동물 감지 (YOLO11 + MiVOLO V2)
-- [`security_system/`](./security_system) — 차량 보안카메라 (얼굴 인증 · Anti-Spoofing)
+> 시연에서는 위 시간을 5초 Capture / 15초 Alarm / 20초 Capture Cycle Reset / SPOOF 3초로 단축해 사용합니다 (`--unknown-seconds`, `--unknown-alarm-seconds` 등 옵션).
 
-## 🔄 AS-IS / TO-BE
+## 📁 구성 파일
 
-| 구분 | AS-IS | TO-BE |
-|---|---|---|
-| 운전자 모니터링 | 단일 행동/제한된 조건 중심 감지 | 눈 감김·하품·고개 자세를 종합한 실시간 Risk Score 판단 |
-| 잔류 탑승자 감지 | 레이다 기반 단순 인원 잔류 여부 판단 | 아동·성인·반려동물 구분 + 잔류 지속시간 기반 단계별 위험도 |
-| 차량 보안 | 영상 기록 또는 단순 접근 감지 | 등록 여부 + Spoofing 판별 + 지속시간 기반 이상 접근 판단 |
-| 모델 적용 | 정확도 중심 모델 선정 | 정확도·Recall·Latency·FPS·전력 효율을 종합한 Edge 최적 모델 선정 |
-| 추론 방식 | 외부 서버/개별 시스템 중심 처리 | Jetson Orin Nano On-Device AI 단일 처리 |
-| 경고 방식 | 단순 감지 결과 또는 개별 알림 | 위험 상태·지속시간 기반 Web UI + Alert Server 단계별 경고 |
+| 파일 | 설명 |
+|---|---|
+| `security_exe.py` | Webcam/저장영상 공용 통합 실행 파일 (Web UI 서버 자동 시작) |
+| `face_detector.py` | YuNet 기반 얼굴 검출 |
+| `anti_spoof.py` / `minifasnet.py` | MiniFASNetV2 기반 Anti-Spoofing |
+| `face_recognizer.py` | SFace 기반 얼굴 인식 |
+| `face_database.py` | SQLite 사용자 DB 관리 |
+| `security_policy.py` | UNKNOWN/SPOOF 지속시간 기반 보안 정책 |
+| `capture_manager.py` | 보안 이벤트 Capture 및 저장 |
+| `register_person.py` / `registration.py` | OWNER/GUEST 웹캠 등록 |
+| `manage_people.py` | 등록 사용자 목록 조회/관리 |
+| `web_alarm.py` | Web UI/경고음 서버 |
+| `verify_setup.py` | 실행 환경 및 모델 파일 점검 |
+| `download_models.py` | 필요 모델 파일 다운로드 |
+| `config.py` | 설정값 관리 |
+| `models/face_detection_yunet_2023mar.onnx` | YuNet 얼굴 검출 모델 |
+| `models/2.7_80x80_MiniFASNetV2.pth` | Anti-Spoofing 모델 |
+| `static/alarm.wav` | 경고음 리소스 |
+| `sim_video.mp4`, `시연영상(보안캠)_07.mp4` | 저장 영상 테스트/시연용 영상 |
+| `실행방법_securitysystem.md` | 실행 환경 구성, 사용자 등록, Web UI 접속 가이드 |
+| `THIRD_PARTY_NOTICES.md` | 사용된 오픈소스 모델/라이브러리 라이선스 고지 |
+
+> `models/face_recognition_sface_2021dec.onnx`(약 38MB)는 용량 제한으로 제외했습니다. 실제 등록된 사용자 얼굴 임베딩이 담긴 `database/face_database.sqlite3`와 `security_events/` 내 캡처 이미지는 개인정보 보호를 위해 포함하지 않았습니다 (원본 `.gitignore` 정책과 동일).
+
+## 🛠️ 설계 시 고려 사항
+
+- 얼굴 검출만으로 인증하면 사진·화면 속 얼굴을 실제 사용자로 오인할 수 있어, Anti-Spoofing 단계를 얼굴 인식보다 먼저 배치하였습니다.
+- UNKNOWN을 즉시 위험으로 판단하면 신규 OWNER/GUEST의 최초 접근이나 순간적인 인식 실패까지 보안 위험으로 오판할 수 있어, Capture Timer와 Presence Timer를 분리해 지속시간 기준으로만 경고가 발생하도록 구성하였습니다.
+- 등록 과정에서도 Anti-Spoofing을 거치도록 하여, 위조 얼굴이 정식 사용자로 등록되는 것을 원천 차단하였습니다.
 
 ## 👥 Team & Role
 
-| 팀원 | 담당 업무 |
+| 담당 | 역할 |
 |---|---|
-| 최민영 | System1(졸음 감지) 개발 및 성능 분석 중심. Eye/Yawn/Head Pose 데이터셋 구축, ResNet18·MobileNetV2·MobileViT-XXS 학습 및 성능(정확도·모델크기·Jetson Latency) 비교, Grad-CAM 기반 판단 근거 분석, YOLO11n/s/m 전력 소비(Energy/Frame) 측정 및 분석, System1 최종보고서·발표자료 작성, 최종 발표 진행 |
-| 이나경 | 각 시스템 초기 구현 및 Security System 중심 개발. System1 3종 모델 데이터셋 학습, System1 시연영상 제작, System2 MiVOLO GPU 실행 구조 구축 및 YOLO11n/s/m+MiVOLO Pipeline E2E Latency·FPS 분석, Security System 구현 및 시연영상 제작, System1·Security 보고서/발표자료 작성 |
-| 이찬미 | System2(잔류 탑승자 감지) 개발 및 성능 분석 중심. YOLO11n/s/m 정확도 평가 환경 구축, Precision·Recall·F1-score·mAP50·mAP50-95 및 Young/Animal Recall 분석, System2 최종 모델 선정 및 YOLO11n Fine-tuning, System2 시연영상 제작, System2 보고서/발표자료 작성 |
-| 팀 전체 | 프로젝트 주제·구현 범위 결정, 시스템 아키텍처·데이터 흐름 설계, 모델 종합 평가 및 최종 모델 선정, 시스템별 결과 검증, 전체 시연/발표자료/보고서 최종 검토 |
-
-## 🗓️ 진행 일지
-
-| 날짜 | 단계 | 주요 작업 |
-|---|---|---|
-| 8/5 | 기획 | 프로젝트 주제·기능 범위 선정, 3개 서브시스템 구조 설계, 알림 방식 초기 검토 |
-| 8/6~8/7 | 아키텍처·데이터 설계 | 서브시스템별 모델 후보 검토, 학습/평가 데이터셋 수집, 알림 방식(Telegram/Discord/WebSocket) 비교 |
-| 8/6~8/10 | 시스템·모델 구현 | System1 Multi-task 모델 학습, System2 YOLO11/MiVOLO GPU 환경 구축, Security 모델 연동, Web UI 구성 |
-| 8/7~8/11 | 성능 평가·모델 비교 | 모델별 Accuracy/Recall/연산량/추론시간/전력/모델크기 측정, YOLO11n/s/m 비교 분석 |
-| 8/11~8/14 | Fine-tuning 및 시스템 통합 | System1 경고 판정 기준 보완, System2 YOLO11n Fine-tuning 및 재평가, Security 사용자 판별/알림 통합 |
-| 8/12~8/18 | 결과 분석·자료 정리 | 모델 비교 결과·트러블슈팅 분석, Grad-CAM 시각화, 시연 영상 및 발표자료 제작 |
-| 8/18 | 최종 검증·문서화 | Jetson 통합 실행 확인, 소스코드·모델·실행방법 정리, 완료보고서 점검 |
-| 8/19 | 발표 | 최종 시스템 시연, 프로젝트 결과 발표 및 질의응답 |
+| 이나경 | Security System 전체 구현 (얼굴 검출·Anti-Spoofing·얼굴 인식 Pipeline, 보안 정책, Web UI 연동), 시연영상 제작 |
 
 ## ⚙️ Design Environment
 
-- Hardware: NVIDIA Jetson Orin Nano Developer Kit, USB Webcam × 3
-- OS / SDK: JetPack 6.2.2 (Jetson Linux), CUDA 12.6
 - Language: Python
-- AI Framework: PyTorch, TensorRT FP16, TorchScript
-- Model Training: Google Colab (Tesla T4 GPU)
-- Object Detection: YOLO11n / YOLO11s / YOLO11m (Ultralytics)
-- Age Estimation: MiVOLO V2
-- User Interface: Web UI (FastAPI / Flask), Telegram Bot Alert
-- Version Management: Git / GitHub
+- Face Detection: YuNet (OpenCV ONNX)
+- Anti-Spoofing: MiniFASNetV2
+- Face Recognition: SFace (OpenCV ONNX)
+- Database: SQLite
+- Backend: Flask (Web UI)
+- Deployment Target: NVIDIA Jetson Orin Nano (JetPack 6.2.2, CUDA 12.6)
 
-## 📦 참고 사항
-
-- 용량이 큰 모델 가중치(ResNet18 Multi-task `.pth`/`.onnx` 43MB, YOLO11s/m 계열, MiVOLO V2 `.pt`/`.onnx.data` 100MB 이상, TensorRT `.engine` 파일 등)와 실제 등록된 얼굴 임베디드 DB(`face_database.sqlite3`), 보안 이벤트 캡처 이미지는 저장소 용량 제한 및 개인정보 보호를 위해 포함하지 않았습니다. `.engine` 파일은 Jetson 보드·TensorRT 버전에 종속적이라 재사용이 불가능하므로 각 시스템 폴더의 실행방법 문서를 참고해 직접 변환해서 사용하세요.
-- 각 서브시스템 실행 방법은 폴더별 `실행방법_*.md` 문서에 상세히 정리되어 있습니다.
+실행 방법(모델 파일 배치, 사용자 등록, Web UI 접속 포함)은 [`실행방법_securitysystem.md`](./실행방법_securitysystem.md)를 참고하세요.
