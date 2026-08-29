@@ -123,7 +123,7 @@ Confusion Matrix 기준으로 기존 YOLO11n에서 발생하던 Young(아동) Pe
 
 | 담당 | 역할 |
 |---|---|
-| 이찬미 (팀장) | YOLO11n/s/m 정확도 평가 환경 구축, Precision·Recall·F1-score·mAP50·mAP50-95·Young/Animal Recall 분석, 최종 모델 선정 및 YOLO11n Fine-tuning, System2 시연영상 및 보고서·발표자료 작성 |
+| 이찬미 | YOLO11n/s/m 정확도 평가 환경 구축, Precision·Recall·F1-score·mAP50·mAP50-95·Young/Animal Recall 분석, 최종 모델 선정 및 YOLO11n Fine-tuning, System2 시연영상 및 보고서·발표자료 작성 |
 | 이나경 | System2 실행 구조 및 MiVOLO GPU 환경 구축, YOLO11n/s/m + MiVOLO Pipeline E2E Latency·FPS 분석 |
 | 최민영 | YOLO11n/s/m Jetson 전력 소비(Average Power, Energy/Frame) 측정 및 분석 |
 
