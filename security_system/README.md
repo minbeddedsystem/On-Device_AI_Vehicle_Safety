@@ -87,6 +87,12 @@ OWNER / GUEST / UNKNOWN 판정
 - UNKNOWN을 즉시 위험으로 판단하면 신규 OWNER/GUEST의 최초 접근이나 순간적인 인식 실패까지 보안 위험으로 오판할 수 있어, Capture Timer와 Presence Timer를 분리해 지속시간 기준으로만 경고가 발생하도록 구성하였습니다.
 - 등록 과정에서도 Anti-Spoofing을 거치도록 하여, 위조 얼굴이 정식 사용자로 등록되는 것을 원천 차단하였습니다.
 
+## 👥 Team & Role
+
+| 담당 | 역할 |
+|---|---|
+| 이나경 | Security System 전체 구현 (얼굴 검출·Anti-Spoofing·얼굴 인식 Pipeline, 보안 정책, Web UI 연동), 시연영상 제작 |
+
 ## ⚙️ Design Environment
 
 - Language: Python
